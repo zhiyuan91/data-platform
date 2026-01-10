@@ -112,29 +112,27 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    actor Dev as 👨‍💻 Developer
-    participant PR as 📝 Pull Request
-    participant GHA as 📱 GitHub App
-    participant WH as 🔗 Webhook Handler
-    participant API as 📡 Repository Dispatch
-    participant WF as ⚙️ Validation Workflow
-    participant Claude as 🧠 Claude Code Action
+    participant Dev as Developer
+    participant PR as Pull Request
+    participant GHA as GitHub App
+    participant WH as Webhook Handler
+    participant WF as Validation Workflow
+    participant Claude as Claude Code Action
 
-    Dev->>PR: Creates PR in producer repo
-    PR->>GHA: Triggers webhook event
-    GHA->>WH: Sends pull_request payload
-    WH->>API: Calls repository_dispatch API
-    API->>WF: Triggers validation workflow
+    Dev->>PR: Creates PR
+    PR->>GHA: Webhook triggered
+    GHA->>WH: pull_request event
+    WH->>WF: repository_dispatch
 
-    Note over WF: Checks out contracts & PR code
+    Note over WF: Checkout contracts & code
 
-    WF->>Claude: Invokes with validation prompt
+    WF->>Claude: Run validation
 
-    Note over Claude: Reads contract YAML<br/>Analyzes producer code<br/>Detects issues
+    Note over Claude: Analyze code vs contract
 
-    Claude-->>WF: Returns validation results
-    WF->>PR: Posts comment with results
-    PR-->>Dev: Shows validation feedback
+    Claude-->>WF: Validation results
+    WF->>PR: Post comment
+    PR-->>Dev: Show feedback
 ```
 
 **No test code to write. No CI/CD changes. Just install the app and get instant validation on every PR.**
