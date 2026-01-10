@@ -31,7 +31,61 @@ jobs:
           path: producer-repo
           token: ${{ steps.generate-token.outputs.token }}
 
+      - name: Post initial PR comment
+        id: initial-comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const repo = '${{ github.event.client_payload.repo }}';
+            const [owner, repoName] = repo.split('/');
+            const prNumber = ${{ github.event.client_payload.pr_number }};
+
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo: repoName,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.body.includes('Contract Validation')
+            );
+
+            const body = [
+              '## 🔍 Contract Validation In Progress',
+              '',
+              'Checking if this PR breaks data contracts...',
+              '',
+              '**Status:** ⏳ Validating...',
+              '',
+              '**Contracts being checked:**',
+              '- `orders-latest`',
+              '- `line-items`',
+              '',
+              '---',
+              '🤖 Powered by Claude Code | [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+            ].join('\n');
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo: repoName,
+                comment_id: botComment.id,
+                body: body,
+              });
+              return botComment.id;
+            } else {
+              const newComment = await github.rest.issues.createComment({
+                owner,
+                repo: repoName,
+                issue_number: prNumber,
+                body: body,
+              });
+              return newComment.data.id;
+            }
+
       - name: Validate contracts with Claude
+        id: validate
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
@@ -94,7 +148,11 @@ jobs:
             - ⚠️ **WARNING**: Potential issues, edge cases, unclear changes
             - ✅ **SAFE**: No violations detected
 
-            **Output Format:**
+            **CRITICAL - Output Instructions:**
+
+            After your analysis, you MUST write your findings to a file named `validation-results.md` in the current directory using the Write tool.
+
+            Use this EXACT format in the file:
 
             ```markdown
             ## 📋 Data Contract Validation Results
@@ -135,7 +193,7 @@ jobs:
             3. Fix PII: Never store passwords in metadata
 
             ---
-            *AI-Powered Semantic Validation | [View Contracts](https://github.com/${{ github.repository }})*
+            *AI-Powered Semantic Validation*
             ```
 
             **Guidelines:**
@@ -155,5 +213,56 @@ jobs:
             3. Analyze ONLY the code in `producer-repo/` directory (this is the PR branch with changes)
             4. Compare the code against the contract specifications
             5. Report all violations found using the 8-category checklist
+            6. Write your findings to `validation-results.md` file using the Write tool
 
             Begin your analysis now by reading the producer code in `producer-repo/`.
+
+      - name: Update PR comment with results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const repo = '${{ github.event.client_payload.repo }}';
+            const [owner, repoName] = repo.split('/');
+            const prNumber = ${{ github.event.client_payload.pr_number }};
+            const commentId = ${{ steps.initial-comment.outputs.result }};
+
+            let validationResults;
+            try {
+              validationResults = fs.readFileSync('validation-results.md', 'utf8');
+            } catch (error) {
+              validationResults = [
+                '## ⚠️ Contract Validation Error',
+                '',
+                'The validation process encountered an error and could not complete.',
+                '',
+                '**Status:** ❌ Error',
+                '',
+                '**Error details:**',
+                '```',
+                error.message,
+                '```',
+                '',
+                'Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.',
+                '',
+                '---',
+                '🤖 Powered by Claude Code'
+              ].join('\n');
+            }
+
+            const footer = [
+              '',
+              '---',
+              '🤖 Powered by Claude Code | [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+            ].join('\n');
+
+            const fullComment = validationResults + footer;
+
+            await github.rest.issues.updateComment({
+              owner,
+              repo: repoName,
+              comment_id: commentId,
+              body: fullComment,
+            });
