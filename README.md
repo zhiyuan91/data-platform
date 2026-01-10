@@ -13,7 +13,6 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 - Changing field names or types
 - Using wrong units (seconds vs milliseconds, dollars vs cents)
 - Violating business rules (negative quantities, out-of-range values)
-- Leaking PII into wrong fields
 
 ### Traditional Solutions (and Their Limitations)
 
