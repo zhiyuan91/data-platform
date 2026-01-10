@@ -32,14 +32,7 @@ models:
 
       order_timestamp:
         type: long
-        description: |
-          When the order was placed (Unix timestamp in MILLISECONDS since epoch).
-
-          CRITICAL: Must be milliseconds, not seconds!
-          ✓ Correct:   1705318200000 (13 digits, ~1.7 trillion)
-          ✗ Incorrect: 1705318200 (10 digits, ~1.7 billion)
-
-          Java: Use Instant.now().toEpochMilli() - NOT getEpochSecond()
+        description: When the order was placed (Unix timestamp in milliseconds)
         required: true
         format: unix_epoch_ms
         example: 1705318200000
@@ -67,12 +60,7 @@ models:
 
       order_total:
         type: long
-        description: |
-          Total order amount in CENTS (not dollars!)
-
-          Unit: CENTS (1 dollar = 100 cents)
-          ✓ Correct:   29999 (= $299.99)
-          ✗ Incorrect: 299.99 (this would be interpreted as $2.99)
+        description: Total order amount in cents
         required: true
         example: 29999
         quality:
@@ -86,15 +74,7 @@ models:
 
       metadata:
         type: object
-        description: |
-          Optional metadata for the order (JSON object).
-
-          ⚠️ PRIVACY WARNING: This field is stored and transmitted as-is.
-          DO NOT include PII or sensitive data such as:
-          - Passwords, tokens, API keys
-          - Credit card numbers, CVV codes
-          - National IDs, SSN, passport numbers
-          - Unencrypted personal data
+        description: Optional metadata (JSON object). Do not include PII or sensitive data such as passwords, tokens, credit cards, or national IDs.
         required: false
         pii_risk: high
         example: {"source": "mobile_app", "version": "2.1.0"}
