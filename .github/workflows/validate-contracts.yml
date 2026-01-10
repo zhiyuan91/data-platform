@@ -138,10 +138,16 @@ jobs:
             2. Read contract YAMLs from `contracts/` directory
             3. Analyze code in `producer-repo/` (PR #${{ github.event.client_payload.pr_number }})
             4. Check for:
-               - **P0**: Enum drift, field removal/rename
-               - **P1**: Unit mismatches, business rule violations, default/null changes
-               - **P2**: PII leakage
+               - **P0 (BREAKING)**: Enum drift, field removal/rename, type changes
+               - **P1 (WARNING)**: Unit mismatches, business rule violations, default/null changes
+               - **P2 (WARNING)**: PII leakage
             5. Output ONLY the formatted result (no preamble, no "I will...", no process explanations)
+
+            **Status Rules (CRITICAL):**
+            - Use 🚨 BREAKING if ANY P0 issues found (enum drift, field removal/rename, type changes)
+            - Use ⚠️ WARNING if only P1/P2 issues found
+            - Use ✅ PASS only if NO issues found
+            - DO NOT mark as PASS if you list any issues in "Critical Issues" section
 
             **Output Rules:**
             - Start immediately with "## 🔍 Contract Validation Results"
