@@ -241,8 +241,16 @@ jobs:
                   }
 
                   if (claudeOutput.trim()) {
-                    validationResults = claudeOutput.trim();
-                    console.log('Successfully extracted from execution file');
+                    // Extract only the formatted section (from "## 🔍" onwards)
+                    const match = claudeOutput.match(/## 🔍 Contract Validation Results[\s\S]*/);
+                    if (match) {
+                      validationResults = match[0].trim();
+                      console.log('Successfully extracted formatted results from execution file');
+                    } else {
+                      // Fallback: use all output if no formatted section found
+                      validationResults = claudeOutput.trim();
+                      console.log('Using full output (no formatted section marker found)');
+                    }
                   } else {
                     console.log('No text content found in execution file');
                   }
