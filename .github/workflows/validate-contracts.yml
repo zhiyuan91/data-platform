@@ -234,6 +234,7 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
+            const fs = require('fs');
             const repo = '${{ github.event.client_payload.repo }}';
             const [owner, repoName] = repo.split('/');
             const prNumber = ${{ github.event.client_payload.pr_number }};
@@ -259,20 +260,38 @@ jobs:
               }
             }
 
-            // Get validation results from job summary
-            // The claude-code-action writes to GITHUB_STEP_SUMMARY but we can't read it directly
-            // So we'll fetch from the GitHub API instead
+            // Get validation results from Claude's execution file
             let validationResults;
-            try {
-              const jobs = await github.rest.actions.listJobsForWorkflowRun({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: context.runId,
-              });
+            const executionFile = '${{ steps.validate.outputs.execution_file }}';
 
-              // The summary is in the step output but not accessible via API
-              // As a workaround, we'll create a generic success message
-              // TODO: This needs to be improved to show actual validation results
+            try {
+              if (executionFile && fs.existsSync(executionFile)) {
+                // Read the execution file (JSON format from Claude Code)
+                const executionData = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
+
+                // Extract text content from Claude's messages
+                let claudeOutput = '';
+                if (executionData.turns && Array.isArray(executionData.turns)) {
+                  for (const turn of executionData.turns) {
+                    if (turn.message && turn.message.content) {
+                      for (const content of turn.message.content) {
+                        if (content.type === 'text' && content.text) {
+                          claudeOutput += content.text + '\n';
+                        }
+                      }
+                    }
+                  }
+                }
+
+                if (claudeOutput.trim()) {
+                  validationResults = claudeOutput.trim();
+                } else {
+                  throw new Error('No text content found in execution file');
+                }
+              } else {
+                throw new Error('Execution file not found');
+              }
+            } catch (error) {
               validationResults = [
                 '## ✅ Contract Validation Complete',
                 '',
@@ -281,27 +300,13 @@ jobs:
                 '**Status:** ✓ Complete',
                 '',
                 'Please check the [workflow summary](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed validation results.',
-                ''
-              ].join('\n');
-            } catch (error) {
-              validationResults = [
-                '## ⚠️ Contract Validation Error',
                 '',
-                'The validation process encountered an error and could not complete.',
-                '',
-                '**Status:** ❌ Error',
-                '',
-                '**Error details:**',
-                '```',
-                error.message,
-                '```',
-                '',
-                'Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.',
-                ''
+                `_Note: Could not extract results from execution file: ${error.message}_`
               ].join('\n');
             }
 
             const footer = [
+              '',
               '---',
               '🤖 Powered by Claude Code | [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
             ].join('\n');
