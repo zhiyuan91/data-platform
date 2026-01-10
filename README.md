@@ -98,7 +98,7 @@ sequenceDiagram
 
 **4. Claude Code Action**
 - Reads contract YAML from platform repo
-- Analyzes Java/Kotlin code from producer PR
+- Analyzes code from producer PR
 - Performs semantic validation
 - Generates formatted report with breaking changes, warnings, or pass status
 
