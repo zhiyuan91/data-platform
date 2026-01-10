@@ -13,12 +13,23 @@ jobs:
       id-token: write
 
     steps:
+      - name: Parse repository info
+        id: repo-info
+        run: |
+          REPO="${{ github.event.client_payload.repo }}"
+          OWNER=$(echo $REPO | cut -d'/' -f1)
+          REPO_NAME=$(echo $REPO | cut -d'/' -f2)
+          echo "owner=$OWNER" >> $GITHUB_OUTPUT
+          echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
+
       - name: Generate GitHub App token
         id: generate-token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@v1
         with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ steps.repo-info.outputs.owner }}
+          repositories: ${{ steps.repo-info.outputs.repo_name }}
 
       - name: Checkout platform repo (contracts)
         uses: actions/checkout@v4
