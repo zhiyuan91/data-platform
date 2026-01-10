@@ -59,8 +59,29 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 ## Architecture
 
 ```
-Producer PR → Webhook → Repository Dispatch → Workflow → Claude Analysis → PR Comment
+Producer PR → GitHub App → Webhook Handler → Repository Dispatch → Workflow → Claude Analysis → PR Comment
 ```
+
+### How It Works
+
+**For producer teams, setup is simple: just install the GitHub App.** Validation runs automatically on every pull request.
+
+**Flow:**
+
+1. **Developer creates PR** in producer repo (e.g., checkout-service)
+2. **GitHub App triggers webhook** on PR open/update
+3. **Webhook handler receives event** and triggers `repository_dispatch` to platform repo
+4. **Platform workflow starts**:
+   - Checks out contracts from platform repo
+   - Checks out producer code from PR branch
+   - Runs Claude Code Action with validation prompt
+5. **Claude analyzes the code**:
+   - Reads contract YAML
+   - Analyzes Java/Kotlin producer code
+   - Detects breaking changes, warnings, or passes
+6. **Results posted as PR comment** with actionable feedback
+
+**No test code to write. No CI/CD changes. Just install the app and get instant validation on every PR.**
 
 ### Key Components
 
