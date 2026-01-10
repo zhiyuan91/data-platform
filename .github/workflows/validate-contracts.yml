@@ -104,129 +104,59 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           github_token: ${{ steps.generate-token.outputs.token }}
           prompt: |
-            You are a data contract validation expert specializing in SEMANTIC and BUSINESS LOGIC validation.
+            You are a data contract validation expert. Analyze the producer code against data contracts and report violations CONCISELY.
 
-            Your focus: Find "hidden bugs" that traditional schema validators miss - semantic drift, unit mismatches, business rule violations, and PII leakage.
+            **IMPORTANT - Output Format:**
+            Keep your response SHORT and ACTIONABLE. Use this EXACT format:
 
-            **Task:**
+            ## 🔍 Contract Validation Results
 
-            1. **Read contract mappings**: Open `contract-mappings.yaml` to find contracts for `${{ github.event.client_payload.repo }}`
+            **Status**: [✅ PASS | ⚠️ WARNING | 🚨 BREAKING]
 
-            2. **Load contracts**: Read YAML files from `contracts/` directory
+            [If PASS: One line saying "No breaking changes detected."]
+            [If issues found: List top 3 most critical issues ONLY]
 
-            3. **Analyze code changes** using this DATA QUALITY CHECKLIST (8 categories):
+            ### Critical Issues
 
-            ### Category 1: Enum/Vocabulary Drift (P0 - HIGHEST PRIORITY)
-            - Are string literals assigned to enum fields NOT in contract's allowed list?
-            - Did code add new enum values not in contract's enum list?
-            - Check: enum definitions, hardcoded strings like `.status("NEW_VALUE")`
+            #### 🔴 Issue 1: [Short Title]
+            - **Field**: `field_name`
+            - **Problem**: [One sentence]
+            - **Location**: File.java:LINE
+            - **Fix**: [One sentence action]
 
-            ### Category 2: Unit & Format Mismatches (P1 - SEMANTIC DRIFT)
-            - Timestamp units: Does code use `getEpochSecond()` when contract expects milliseconds?
-            - Money units: Does code multiply by 100 (cents) but contract expects dollars, or vice versa?
-            - Format changes: ISO 8601 → Unix timestamp, YYYY-MM-DD → MM/DD/YYYY
-            - Look for: variable names (timeout_ms vs timeout_sec), calculations (* 1000, / 1000)
+            #### 🟠 Issue 2: [Short Title]
+            - **Field**: `field_name`
+            - **Problem**: [One sentence]
+            - **Location**: File.java:LINE
+            - **Fix**: [One sentence action]
 
-            ### Category 3: Default Value & Nullability Changes (P1)
-            - Did code change from sending `null` to sending `0` or `-1`?
-            - Did code stop sending a field entirely (key missing) instead of null?
-            - Are optional fields now being treated as required, or vice versa?
-
-            ### Category 4: Business Rule Violations (P1)
-            - Numeric constraints: quantity > 0, amount > 0, end_time > start_time
-            - Range violations: values outside contract's min/max bounds
-            - Format violations: invalid email, phone, URL patterns
-
-            ### Category 5: PII & Sensitive Data Leakage (P2 - COMPLIANCE)
-            - Is sensitive data mapped to public/open fields (especially Map/JSON fields)?
-            - Check for: passwords, API keys, tokens, SSN, credit cards, national IDs
-            - High-risk fields: `metadata`, `extra_data`, `attributes`, `properties`
-
-            ### Category 6: Missing Required Fields (P3 - STRUCTURAL)
-            - Are required fields potentially null in code paths (especially error handlers)?
-            - Check: try-catch blocks, conditional logic, default constructors
-
-            ### Category 7: Field Removal/Renaming (P0)
-            - Were required fields removed from event builders?
-            - Were fields renamed (consider camelCase ↔ snake_case)?
-
-            ### Category 8: Type Safety Issues (P3 - LOWER PRIORITY)
-            - Implicit type conversions (String "123" → Integer 123)
-            - Note: Schema registry usually catches these, flag but lower priority
-
-            **Categorization:**
-            - 🚨 **BREAKING**: Enum drift, field removal, unit mismatch, PII leakage, business rule violation
-            - ⚠️ **WARNING**: Potential issues, edge cases, unclear changes
-            - ✅ **SAFE**: No violations detected
-
-            **CRITICAL - Output Instructions:**
-
-            After your analysis, you MUST write your findings to a file named `validation-results.md` in the current directory using the Write tool.
-
-            Use this EXACT format in the file:
-
-            ```markdown
-            ## 📋 Data Contract Validation Results
-
-            **Status**: [BREAKING | WARNING | OK]
-
-            ### Summary
-            [One sentence describing what was found]
-
-            ### Applicable Contracts
-            - `orders-latest` - Customer order events
-            - `line-items` - Order line items
-
-            ### Priority Findings
-
-            #### 🔴 Category 1: Enum Drift
-            - **Field**: `order_status`
-              - **Issue**: New enum value "REFUNDED" not in contract
-              - **Contract**: orders-latest.yaml allows [PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED]
-              - **Location**: OrderStatus.java:15, OrderProducer.java:42
-              - **Impact**: Downstream switch-case will throw IllegalStateException
-
-            #### 🟠 Category 2: Unit Mismatch
-            - **Field**: `order_timestamp`
-              - **Issue**: Using `getEpochSecond()` returns seconds, contract expects milliseconds
-              - **Location**: OrderProducer.java:35
-              - **Impact**: Timestamps appear to be from 1970, freshness checks fail
-
-            #### 🟡 Category 5: PII Leakage
-            - **Field**: `metadata`
-              - **Issue**: User password stored in public metadata field
-              - **Location**: OrderProducer.java:58
-              - **Impact**: GDPR violation, security breach
-
-            ### Recommendations
-            1. Fix enum: Remove REFUNDED or update contract
-            2. Fix timestamp: Change to `toEpochMilli()`
-            3. Fix PII: Never store passwords in metadata
+            [Max 3 issues - prioritize P0 breaking changes]
 
             ---
-            *AI-Powered Semantic Validation*
-            ```
+            **Contracts checked**: orders-latest, line-items | [Full details in workflow](workflow-url)
 
-            **Guidelines:**
-            - Focus on SEMANTICS over syntax (type checkers handle syntax)
-            - Understand business context: What does this field MEAN?
-            - Check ALL code paths: normal flow, error handlers, edge cases
-            - Be specific: Provide file:line references
-            - Consider naming conventions: camelCase ↔ snake_case mapping
+            **Analysis Guidelines:**
+            1. Read `contract-mappings.yaml` to find contracts for `${{ github.event.client_payload.repo }}`
+            2. Read contract YAML files from `contracts/` directory
+            3. Analyze code in `producer-repo/` directory (PR #${{ github.event.client_payload.pr_number }} branch)
+            4. Focus on these DATA QUALITY issues:
+               - **Category 1 (P0)**: Enum drift - new values not in contract
+               - **Category 2 (P1)**: Unit mismatches - seconds vs milliseconds, cents vs dollars
+               - **Category 3 (P1)**: Default/null changes - sending 0 instead of null
+               - **Category 4 (P1)**: Business rules - quantity > 0, amount limits
+               - **Category 5 (P2)**: PII leakage - sensitive data in wrong fields
+               - **Category 6 (P3)**: Missing required fields
+               - **Category 7 (P0)**: Field removal/rename
+               - **Category 8 (P3)**: Type conversions
 
-            **IMPORTANT - Where to analyze:**
+            **Output Requirements:**
+            - Keep response under 30 lines
+            - Show ONLY breaking changes (P0/P1)
+            - Skip detailed explanations
+            - Skip "passed validations" section
+            - Be specific with file:line references
 
-            The producer code from PR #${{ github.event.client_payload.pr_number }} has been checked out to the `producer-repo/` directory.
-
-            **Your steps:**
-            1. Read `contract-mappings.yaml` to find which contracts apply to `${{ github.event.client_payload.repo }}`
-            2. Read the contract YAML files from `contracts/` directory
-            3. Analyze ONLY the code in `producer-repo/` directory (this is the PR branch with changes)
-            4. Compare the code against the contract specifications
-            5. Report all violations found using the 8-category checklist
-            6. Write your findings to `validation-results.md` file using the Write tool
-
-            Begin your analysis now by reading the producer code in `producer-repo/`.
+            Begin analysis now.
 
       - name: Debug - List files after Claude validation
         if: always()
