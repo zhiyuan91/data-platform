@@ -1,0 +1,27 @@
+# Contract Mappings
+# Maps producer repositories to their data contracts
+
+version: 1.0.0
+
+mappings:
+  # Checkout Service produces order and line item events
+  - repo: vibe-coding-in-action/checkout-service
+    description: E-commerce checkout service that produces order events
+    contracts:
+      - orders-latest
+      - line-items
+    paths:
+      # Paths to monitor for changes that might affect contracts
+      - src/main/java/com/example/**/*.java
+      - src/main/kotlin/com/example/**/*.kt
+    contacts:
+      - team: Checkout Team
+        email: checkout-team@example.com
+
+  # Example: Add more producer repos here
+  # - repo: example-org/payment-service
+  #   description: Payment processing service
+  #   contracts:
+  #     - payments
+  #   paths:
+  #     - src/**/*.py

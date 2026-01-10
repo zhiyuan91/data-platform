@@ -1,0 +1,111 @@
+dataContractSpecification: 1.0.0
+id: orders-latest
+info:
+  title: Orders Latest
+  version: 1.0.0
+  description: |
+    Customer order events published to the orders-latest Kafka topic.
+    This contract defines the schema and quality expectations for order data.
+  owner: Data Platform Team
+  contact:
+    name: Platform Team
+    email: platform@example.com
+
+servers:
+  production:
+    type: kafka
+    host: kafka.production.example.com:9092
+    topic: orders-latest
+    format: json
+
+models:
+  orders:
+    description: Individual customer order events
+    type: table
+    fields:
+      order_id:
+        type: text
+        description: Unique identifier for the order
+        required: true
+        unique: true
+        example: "ORD-12345"
+
+      order_timestamp:
+        type: timestamp
+        description: When the order was placed
+        required: true
+        example: "2024-01-15T10:30:00Z"
+
+      order_total:
+        type: long
+        description: Total order amount in cents
+        required: true
+        example: 29999
+        quality:
+          - type: sql
+            description: Order total should be between $10 and $499 (95th percentile check)
+            query: SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY order_total) FROM orders
+            mustBeBetween: [1000, 49900]
+
+      customer_id:
+        type: text
+        description: Unique identifier for the customer
+        required: true
+        example: "CUST-67890"
+
+      customer_email_address:
+        type: text
+        format: email
+        description: Customer's email address
+        required: true
+        pii: true
+        classification: sensitive
+        example: "customer@example.com"
+
+      processed_timestamp:
+        type: timestamp
+        description: When the order was processed by the system
+        required: true
+        example: "2024-01-15T10:30:05Z"
+
+quality:
+  type: SodaCL
+  specification: |
+    checks for orders:
+      - row_count > 0
+      - duplicate_count(order_id) = 0
+      - missing_count(customer_email_address) = 0
+      - invalid_count(customer_email_address) = 0:
+          valid format: email
+      - freshness(order_timestamp) < 1h
+
+servicelevels:
+  availability:
+    description: Topic availability SLA
+    percentage: 99.9%
+
+  retention:
+    description: Message retention period
+    period: 7 days
+    unlimited: false
+
+  latency:
+    description: End-to-end latency from order placement to topic
+    threshold: 5s
+    percentile: 0.95
+
+terms:
+  usage: |
+    This topic contains customer order data and must be handled according to
+    data privacy regulations. PII fields must be encrypted at rest and in transit.
+
+  limitations: |
+    - Historical data available for 7 days
+    - Quality checks run hourly
+    - Breaking changes require platform team approval
+
+tags:
+  - orders
+  - customer-data
+  - pii
+  - production

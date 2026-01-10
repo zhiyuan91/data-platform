@@ -1,0 +1,92 @@
+dataContractSpecification: 1.0.0
+id: line-items
+info:
+  title: Line Items
+  version: 1.0.0
+  description: |
+    Order line item events published to the line-items Kafka topic.
+    Each line item represents a product in an order.
+  owner: Data Platform Team
+  contact:
+    name: Platform Team
+    email: platform@example.com
+
+servers:
+  production:
+    type: kafka
+    host: kafka.production.example.com:9092
+    topic: line-items
+    format: json
+
+models:
+  line_items:
+    description: Individual line items from customer orders
+    type: table
+    fields:
+      line_item_id:
+        type: text
+        description: Unique identifier for the line item
+        required: true
+        unique: true
+        example: "LI-98765"
+
+      order_id:
+        type: text
+        description: Reference to the parent order
+        required: true
+        references: orders.order_id
+        example: "ORD-12345"
+
+      product_id:
+        type: text
+        description: Identifier for the product
+        required: true
+        example: "PROD-555"
+
+      quantity:
+        type: integer
+        description: Number of units ordered
+        required: true
+        example: 2
+        quality:
+          - type: sql
+            description: Quantity should be positive and reasonable
+            query: SELECT MAX(quantity) FROM line_items
+            mustBeBetween: [1, 100]
+
+      unit_price:
+        type: long
+        description: Price per unit in cents
+        required: true
+        example: 14999
+
+quality:
+  type: SodaCL
+  specification: |
+    checks for line_items:
+      - row_count > 0
+      - duplicate_count(line_item_id) = 0
+      - missing_count(order_id) = 0
+      - missing_count(product_id) = 0
+      - values in (quantity) > 0
+
+servicelevels:
+  availability:
+    description: Topic availability SLA
+    percentage: 99.9%
+
+  retention:
+    description: Message retention period
+    period: 7 days
+    unlimited: false
+
+terms:
+  usage: |
+    Line items are linked to orders. Always join with orders topic for complete
+    order information.
+
+tags:
+  - line-items
+  - orders
+  - product-data
+  - production

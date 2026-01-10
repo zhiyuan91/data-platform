@@ -1,0 +1,104 @@
+name: Validate Data Contracts
+
+on:
+  repository_dispatch:
+    types: [validate-contract]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout platform repo (contracts)
+        uses: actions/checkout@v4
+
+      - name: Checkout producer repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          ref: ${{ github.event.client_payload.pr_ref }}
+          path: producer-repo
+          token: ${{ secrets.GH_APP_TOKEN }}
+
+      - name: Validate contracts with Claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GH_APP_TOKEN }}
+        with:
+          repo: ${{ github.event.client_payload.repo }}
+          pr_number: ${{ github.event.client_payload.pr_number }}
+          prompt: |
+            You are a data contract validation expert. Analyze this pull request for breaking changes against data contracts.
+
+            **Your task:**
+
+            1. **Read the contract mappings**: Open `contract-mappings.yaml` in the platform repo to find which contracts apply to the producer repo `${{ github.event.client_payload.repo }}`
+
+            2. **Load the contracts**: For each contract identified, read the corresponding YAML file from the `contracts/` directory
+
+            3. **Analyze the code changes**: Review the code changes in `producer-repo/` to identify:
+               - Removed required fields from event objects
+               - Changed field types (e.g., String → Integer, Long → String)
+               - Renamed fields (consider camelCase ↔ snake_case mappings)
+               - Modified field nullability
+               - Changes to business logic that affects contract fields
+               - Removed or modified topic production code
+
+            4. **Categorize findings**:
+               - **BREAKING**: Changes that violate required fields or types in contracts
+               - **WARNING**: Changes to fields with quality checks or optional fields
+               - **OK**: No contract violations detected
+
+            5. **Post your findings** as a PR comment with this structure:
+
+            ```markdown
+            ## 📋 Data Contract Validation Results
+
+            **Status**: [BREAKING | WARNING | OK]
+
+            ### Summary
+            [Brief summary of findings]
+
+            ### Applicable Contracts
+            - `contract-name-1` - [Description]
+            - `contract-name-2` - [Description]
+
+            ### Findings
+
+            #### 🚨 Breaking Changes
+            - **Field**: `customer_email_address` (required)
+              - **Issue**: Field removed from OrderEvent builder
+              - **Contract**: orders-latest.yaml
+              - **Impact**: Downstream consumers expect this field
+
+            #### ⚠️ Warnings
+            - **Field**: `order_total`
+              - **Issue**: Business logic modified in calculateTotal()
+              - **Contract**: orders-latest.yaml (has quality check)
+              - **Impact**: May affect 95th percentile quality check
+
+            #### ✅ Safe Changes
+            - Added new optional field `customer_phone`
+            - Refactored internal helper methods (no contract impact)
+
+            ### Recommendations
+            [Provide actionable recommendations]
+
+            ---
+            *Validated by Claude Code Action | [View Contracts](https://github.com/${{ github.repository }})*
+            ```
+
+            **Important guidelines**:
+            - Focus on structural changes (field removal, type changes) for high confidence
+            - Flag business logic changes affecting contract fields as warnings
+            - Consider camelCase in Java code mapping to snake_case in contracts
+            - If no contracts apply to this repo, state that clearly
+            - Be specific about which contract and which field is affected
+            - Provide file paths and line numbers where issues were found
+
+            Begin your analysis now.
