@@ -145,4 +145,15 @@ jobs:
             - Be specific: Provide file:line references
             - Consider naming conventions: camelCase ↔ snake_case mapping
 
-            Begin your analysis now.
+            **IMPORTANT - Where to analyze:**
+
+            The producer code from PR #${{ github.event.client_payload.pr_number }} has been checked out to the `producer-repo/` directory.
+
+            **Your steps:**
+            1. Read `contract-mappings.yaml` to find which contracts apply to `${{ github.event.client_payload.repo }}`
+            2. Read the contract YAML files from `contracts/` directory
+            3. Analyze ONLY the code in `producer-repo/` directory (this is the PR branch with changes)
+            4. Compare the code against the contract specifications
+            5. Report all violations found using the 8-category checklist
+
+            Begin your analysis now by reading the producer code in `producer-repo/`.
