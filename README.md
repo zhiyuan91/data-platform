@@ -58,8 +58,18 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 
 ## Architecture
 
-```
-Producer PR → GitHub App → Webhook Handler → Repository Dispatch → Workflow → Claude Analysis → PR Comment
+```mermaid
+graph LR
+    A[Developer creates PR] --> B[GitHub App]
+    B --> C[Webhook Handler]
+    C --> D[Repository Dispatch API]
+    D --> E[Validation Workflow]
+    E --> F[Claude Code Action]
+    F --> G[PR Comment]
+
+    style A fill:#e1f5ff
+    style G fill:#c8e6c9
+    style F fill:#fff9c4
 ```
 
 ### How It Works
