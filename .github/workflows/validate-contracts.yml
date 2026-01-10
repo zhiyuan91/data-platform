@@ -227,7 +227,27 @@ jobs:
             const repo = '${{ github.event.client_payload.repo }}';
             const [owner, repoName] = repo.split('/');
             const prNumber = ${{ github.event.client_payload.pr_number }};
-            const commentId = ${{ steps.initial-comment.outputs.result }};
+
+            // Get comment ID from previous step or find it manually
+            const commentIdFromStep = '${{ steps.initial-comment.outputs.result }}';
+            let commentId = null;
+
+            if (commentIdFromStep && commentIdFromStep !== '') {
+              commentId = parseInt(commentIdFromStep);
+            } else {
+              // Find existing comment if initial step failed
+              const comments = await github.rest.issues.listComments({
+                owner,
+                repo: repoName,
+                issue_number: prNumber,
+              });
+              const botComment = comments.data.find(c =>
+                c.body.includes('Contract Validation')
+              );
+              if (botComment) {
+                commentId = botComment.id;
+              }
+            }
 
             let validationResults;
             try {
@@ -260,9 +280,20 @@ jobs:
 
             const fullComment = validationResults + footer;
 
-            await github.rest.issues.updateComment({
-              owner,
-              repo: repoName,
-              comment_id: commentId,
-              body: fullComment,
-            });
+            if (commentId) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner,
+                repo: repoName,
+                comment_id: commentId,
+                body: fullComment,
+              });
+            } else {
+              // Create new comment if we couldn't find existing one
+              await github.rest.issues.createComment({
+                owner,
+                repo: repoName,
+                issue_number: prNumber,
+                body: fullComment,
+              });
+            }
