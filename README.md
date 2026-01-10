@@ -56,59 +56,9 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 
 **This POC demonstrates how to use Claude Code Action to automatically validate producer changes against data contracts on every pull request.**
 
-## Architecture
-
-```mermaid
-graph TB
-    subgraph Producer["🏢 Producer Repository"]
-        PR[👨‍💻 Developer<br/>Creates PR]
-    end
-
-    subgraph Trigger["⚡ Event Pipeline"]
-        GHA[📱 GitHub App<br/>Webhook]
-        WH[🔗 Webhook Handler]
-        API[📡 Repository Dispatch<br/>API Call]
-    end
-
-    subgraph Platform["🏛️ Data Platform Repository"]
-        WF[⚙️ Validation Workflow<br/>GitHub Actions]
-        subgraph Analysis["🤖 AI Analysis"]
-            Claude[🧠 Claude Code Action<br/>Semantic Validation]
-        end
-    end
-
-    subgraph Result["✅ Feedback"]
-        Comment[💬 PR Comment<br/>with Results]
-    end
-
-    PR --> GHA
-    GHA --> WH
-    WH --> API
-    API --> WF
-    WF --> Claude
-    Claude --> Comment
-    Comment -.feedback.-> PR
-
-    style PR fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style GHA fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style WH fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style API fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style WF fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Claude fill:#fff9c4,stroke:#f9a825,stroke-width:3px
-    style Comment fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-
-    style Producer fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
-    style Trigger fill:#fff8e1,stroke:#ffa000,stroke-width:2px
-    style Platform fill:#f1f8e9,stroke:#689f38,stroke-width:2px
-    style Analysis fill:#fffde7,stroke:#fbc02d,stroke-width:2px
-    style Result fill:#e0f2f1,stroke:#00897b,stroke-width:2px
-```
-
-### How It Works
+## How It Works
 
 **For producer teams, setup is simple: just install the GitHub App.** Validation runs automatically on every pull request.
-
-**Flow:**
 
 ```mermaid
 sequenceDiagram
