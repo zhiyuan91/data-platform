@@ -1,10 +1,10 @@
 dataContractSpecification: 1.0.0
-id: orders-latest
+id: orders
 info:
-  title: Orders Latest
+  title: Orders
   version: 1.0.0
   description: |
-    Customer order events published to the orders-latest Kafka topic.
+    Customer order events published to the orders Kafka topic.
     This contract defines the schema and quality expectations for order data.
   owner: Data Platform Team
   contact:
@@ -15,7 +15,7 @@ servers:
   production:
     type: kafka
     host: kafka.production.example.com:9092
-    topic: orders-latest
+    topic: orders
     format: json
 
 models:
