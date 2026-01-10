@@ -58,7 +58,7 @@ This POC demonstrates how to use Claude Code Action to automatically validate pr
 
 ## How It Works
 
-**For producer teams, setup is simple: just install the GitHub App.** Validation runs automatically on every pull request.
+**For producer teams, setup is simple: install the GitHub App (provided by the platform team).** Validation runs automatically on every pull request.
 
 ```mermaid
 sequenceDiagram
