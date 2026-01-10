@@ -298,15 +298,17 @@ jobs:
               const executionFile = '${{ steps.validate.outputs.execution_file }}';
               if (executionFile && fs.existsSync(executionFile)) {
                 try {
-                  const executionData = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
+                  // The execution file is a JSON array of turn objects (not {turns: [...]})
+                  const turns = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
                   let claudeOutput = '';
 
-                  if (executionData.turns && Array.isArray(executionData.turns)) {
-                    for (const turn of executionData.turns) {
-                      if (turn.message && turn.message.content) {
+                  if (Array.isArray(turns)) {
+                    for (const turn of turns) {
+                      // Look for assistant messages with text content
+                      if (turn.type === 'assistant' && turn.message && turn.message.content) {
                         for (const content of turn.message.content) {
                           if (content.type === 'text' && content.text) {
-                            claudeOutput += content.text + '\n';
+                            claudeOutput += content.text + '\n\n';
                           }
                         }
                       }
@@ -316,6 +318,8 @@ jobs:
                   if (claudeOutput.trim()) {
                     validationResults = claudeOutput.trim();
                     console.log('Successfully extracted from execution file');
+                  } else {
+                    console.log('No text content found in execution file');
                   }
                 } catch (error) {
                   console.log('Error reading execution file:', error.message);
