@@ -50,6 +50,8 @@ This POC demonstrates how to use Claude Code Action to automatically validate pr
 
 **Producer teams just install a GitHub App (provided by the platform team) and validation runs automatically on every pull request.**
 
+The architecture uses GitHub App + `repository_dispatch` to keep producer repos clean: producers don't need to add workflows to their repos. The platform team centrally manages all validation logic, performs cross-repo analysis, and posts validation results back to producer PRs.
+
 ```mermaid
 sequenceDiagram
     participant Dev as Developer
