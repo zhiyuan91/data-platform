@@ -45,16 +45,16 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 
 ## Why AI-Powered Validation?
 
-**Claude AI excels at understanding semantic meaning and business logic**, making it perfect for contract validation:
+Claude AI excels at understanding semantic meaning and business logic, making it perfect for contract validation:
 
-✅ **Semantic Understanding**: Detects that `getEpochSecond()` produces seconds, not the required milliseconds
-✅ **Business Logic Analysis**: Understands that `quantity = 0` violates a "must be positive" rule
-✅ **Context Awareness**: Knows `orderTotal` (camelCase) maps to `order_total` (snake_case), but `amount` doesn't
-✅ **Code Reasoning**: Traces through switch statements and builders to find the actual output
-✅ **Instant Feedback**: Runs in seconds on every PR, no test infrastructure needed
-✅ **Zero Maintenance**: No test code to write or maintain
+- ✅ **Semantic Understanding**: Detects that `getEpochSecond()` produces seconds, not the required milliseconds
+- ✅ **Business Logic Analysis**: Understands that `quantity = 0` violates a "must be positive" rule
+- ✅ **Context Awareness**: Knows `orderTotal` (camelCase) maps to `order_total` (snake_case), but `amount` doesn't
+- ✅ **Code Reasoning**: Traces through switch statements and builders to find the actual output
+- ✅ **Instant Feedback**: Runs in seconds on every PR, no test infrastructure needed
+- ✅ **Zero Maintenance**: No test code to write or maintain
 
-**This POC demonstrates how to use Claude Code Action to automatically validate producer changes against data contracts on every pull request.**
+This POC demonstrates how to use Claude Code Action to automatically validate producer changes against data contracts on every pull request.
 
 ## How It Works
 
