@@ -70,7 +70,7 @@ Producer PR → GitHub App → Webhook Handler → Repository Dispatch → Workf
 
 1. **Developer creates PR** in producer repo (e.g., checkout-service)
 2. **GitHub App triggers webhook** on PR open/update
-3. **Webhook handler receives event** and triggers `repository_dispatch` to platform repo
+3. **Webhook handler receives event** and calls GitHub API `repository_dispatch` to trigger the platform repo workflow
 4. **Platform workflow starts**:
    - Checks out contracts from platform repo
    - Checks out producer code from PR branch
@@ -92,7 +92,7 @@ Producer PR → GitHub App → Webhook Handler → Repository Dispatch → Workf
 
 **2. Webhook Handler**
 - Receives `pull_request` events from producer repos
-- Triggers `repository_dispatch` event to platform repo
+- Calls GitHub API `repository_dispatch` to trigger platform repo workflow
 - Passes PR metadata (repo, number, branch ref)
 
 **3. Platform Repo Workflow**
