@@ -39,28 +39,62 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           github_token: ${{ steps.generate-token.outputs.token }}
           prompt: |
-            You are a data contract validation expert. Analyze this pull request for breaking changes against data contracts.
+            You are a data contract validation expert specializing in SEMANTIC and BUSINESS LOGIC validation.
 
-            **Your task:**
+            Your focus: Find "hidden bugs" that traditional schema validators miss - semantic drift, unit mismatches, business rule violations, and PII leakage.
 
-            1. **Read the contract mappings**: Open `contract-mappings.yaml` in the platform repo to find which contracts apply to the producer repo `${{ github.event.client_payload.repo }}`
+            **Task:**
 
-            2. **Load the contracts**: For each contract identified, read the corresponding YAML file from the `contracts/` directory
+            1. **Read contract mappings**: Open `contract-mappings.yaml` to find contracts for `${{ github.event.client_payload.repo }}`
 
-            3. **Analyze the code changes**: Review the code changes in `producer-repo/` to identify:
-               - Removed required fields from event objects
-               - Changed field types (e.g., String → Integer, Long → String)
-               - Renamed fields (consider camelCase ↔ snake_case mappings)
-               - Modified field nullability
-               - Changes to business logic that affects contract fields
-               - Removed or modified topic production code
+            2. **Load contracts**: Read YAML files from `contracts/` directory
 
-            4. **Categorize findings**:
-               - **BREAKING**: Changes that violate required fields or types in contracts
-               - **WARNING**: Changes to fields with quality checks or optional fields
-               - **OK**: No contract violations detected
+            3. **Analyze code changes** using this DATA QUALITY CHECKLIST (8 categories):
 
-            5. **Post your findings** as a PR comment with this structure:
+            ### Category 1: Enum/Vocabulary Drift (P0 - HIGHEST PRIORITY)
+            - Are string literals assigned to enum fields NOT in contract's allowed list?
+            - Did code add new enum values not in contract's enum list?
+            - Check: enum definitions, hardcoded strings like `.status("NEW_VALUE")`
+
+            ### Category 2: Unit & Format Mismatches (P1 - SEMANTIC DRIFT)
+            - Timestamp units: Does code use `getEpochSecond()` when contract expects milliseconds?
+            - Money units: Does code multiply by 100 (cents) but contract expects dollars, or vice versa?
+            - Format changes: ISO 8601 → Unix timestamp, YYYY-MM-DD → MM/DD/YYYY
+            - Look for: variable names (timeout_ms vs timeout_sec), calculations (* 1000, / 1000)
+
+            ### Category 3: Default Value & Nullability Changes (P1)
+            - Did code change from sending `null` to sending `0` or `-1`?
+            - Did code stop sending a field entirely (key missing) instead of null?
+            - Are optional fields now being treated as required, or vice versa?
+
+            ### Category 4: Business Rule Violations (P1)
+            - Numeric constraints: quantity > 0, amount > 0, end_time > start_time
+            - Range violations: values outside contract's min/max bounds
+            - Format violations: invalid email, phone, URL patterns
+
+            ### Category 5: PII & Sensitive Data Leakage (P2 - COMPLIANCE)
+            - Is sensitive data mapped to public/open fields (especially Map/JSON fields)?
+            - Check for: passwords, API keys, tokens, SSN, credit cards, national IDs
+            - High-risk fields: `metadata`, `extra_data`, `attributes`, `properties`
+
+            ### Category 6: Missing Required Fields (P3 - STRUCTURAL)
+            - Are required fields potentially null in code paths (especially error handlers)?
+            - Check: try-catch blocks, conditional logic, default constructors
+
+            ### Category 7: Field Removal/Renaming (P0)
+            - Were required fields removed from event builders?
+            - Were fields renamed (consider camelCase ↔ snake_case)?
+
+            ### Category 8: Type Safety Issues (P3 - LOWER PRIORITY)
+            - Implicit type conversions (String "123" → Integer 123)
+            - Note: Schema registry usually catches these, flag but lower priority
+
+            **Categorization:**
+            - 🚨 **BREAKING**: Enum drift, field removal, unit mismatch, PII leakage, business rule violation
+            - ⚠️ **WARNING**: Potential issues, edge cases, unclear changes
+            - ✅ **SAFE**: No violations detected
+
+            **Output Format:**
 
             ```markdown
             ## 📋 Data Contract Validation Results
@@ -68,43 +102,47 @@ jobs:
             **Status**: [BREAKING | WARNING | OK]
 
             ### Summary
-            [Brief summary of findings]
+            [One sentence describing what was found]
 
             ### Applicable Contracts
-            - `contract-name-1` - [Description]
-            - `contract-name-2` - [Description]
+            - `orders-latest` - Customer order events
+            - `line-items` - Order line items
 
-            ### Findings
+            ### Priority Findings
 
-            #### 🚨 Breaking Changes
-            - **Field**: `customer_email_address` (required)
-              - **Issue**: Field removed from OrderEvent builder
-              - **Contract**: orders-latest.yaml
-              - **Impact**: Downstream consumers expect this field
+            #### 🔴 Category 1: Enum Drift
+            - **Field**: `order_status`
+              - **Issue**: New enum value "REFUNDED" not in contract
+              - **Contract**: orders-latest.yaml allows [PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED]
+              - **Location**: OrderStatus.java:15, OrderProducer.java:42
+              - **Impact**: Downstream switch-case will throw IllegalStateException
 
-            #### ⚠️ Warnings
-            - **Field**: `order_total`
-              - **Issue**: Business logic modified in calculateTotal()
-              - **Contract**: orders-latest.yaml (has quality check)
-              - **Impact**: May affect 95th percentile quality check
+            #### 🟠 Category 2: Unit Mismatch
+            - **Field**: `order_timestamp`
+              - **Issue**: Using `getEpochSecond()` returns seconds, contract expects milliseconds
+              - **Location**: OrderProducer.java:35
+              - **Impact**: Timestamps appear to be from 1970, freshness checks fail
 
-            #### ✅ Safe Changes
-            - Added new optional field `customer_phone`
-            - Refactored internal helper methods (no contract impact)
+            #### 🟡 Category 5: PII Leakage
+            - **Field**: `metadata`
+              - **Issue**: User password stored in public metadata field
+              - **Location**: OrderProducer.java:58
+              - **Impact**: GDPR violation, security breach
 
             ### Recommendations
-            [Provide actionable recommendations]
+            1. Fix enum: Remove REFUNDED or update contract
+            2. Fix timestamp: Change to `toEpochMilli()`
+            3. Fix PII: Never store passwords in metadata
 
             ---
-            *Validated by Claude Code Action | [View Contracts](https://github.com/${{ github.repository }})*
+            *AI-Powered Semantic Validation | [View Contracts](https://github.com/${{ github.repository }})*
             ```
 
-            **Important guidelines**:
-            - Focus on structural changes (field removal, type changes) for high confidence
-            - Flag business logic changes affecting contract fields as warnings
-            - Consider camelCase in Java code mapping to snake_case in contracts
-            - If no contracts apply to this repo, state that clearly
-            - Be specific about which contract and which field is affected
-            - Provide file paths and line numbers where issues were found
+            **Guidelines:**
+            - Focus on SEMANTICS over syntax (type checkers handle syntax)
+            - Understand business context: What does this field MEAN?
+            - Check ALL code paths: normal flow, error handlers, edge cases
+            - Be specific: Provide file:line references
+            - Consider naming conventions: camelCase ↔ snake_case mapping
 
             Begin your analysis now.

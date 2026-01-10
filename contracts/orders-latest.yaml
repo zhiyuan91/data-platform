@@ -31,21 +31,73 @@ models:
         example: "ORD-12345"
 
       order_timestamp:
-        type: timestamp
-        description: When the order was placed
+        type: long
+        description: |
+          When the order was placed (Unix timestamp in MILLISECONDS since epoch).
+
+          CRITICAL: Must be milliseconds, not seconds!
+          ✓ Correct:   1705318200000 (13 digits, ~1.7 trillion)
+          ✗ Incorrect: 1705318200 (10 digits, ~1.7 billion)
+
+          Java: Use Instant.now().toEpochMilli() - NOT getEpochSecond()
         required: true
-        example: "2024-01-15T10:30:00Z"
+        format: unix_epoch_ms
+        example: 1705318200000
+        quality:
+          - type: range
+            description: Timestamp must be in milliseconds (reasonable range)
+            min: 1000000000000
+            max: 9999999999999
+          - type: freshness
+            description: Events should be recent (within 24 hours)
+            maxAge: 24h
+
+      order_status:
+        type: text
+        description: Current status of the order
+        required: true
+        enum:
+          - PENDING
+          - CONFIRMED
+          - SHIPPED
+          - DELIVERED
+          - CANCELLED
+        enum_evolution: strict
+        example: "CONFIRMED"
 
       order_total:
         type: long
-        description: Total order amount in cents
+        description: |
+          Total order amount in CENTS (not dollars!)
+
+          Unit: CENTS (1 dollar = 100 cents)
+          ✓ Correct:   29999 (= $299.99)
+          ✗ Incorrect: 299.99 (this would be interpreted as $2.99)
         required: true
         example: 29999
         quality:
-          - type: sql
-            description: Order total should be between $10 and $499 (95th percentile check)
-            query: SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY order_total) FROM orders
-            mustBeBetween: [1000, 49900]
+          - type: range
+            description: Order total should be between $10 and $499
+            min: 1000
+            max: 49900
+          - type: positive
+            description: Amount must be positive
+            min: 1
+
+      metadata:
+        type: object
+        description: |
+          Optional metadata for the order (JSON object).
+
+          ⚠️ PRIVACY WARNING: This field is stored and transmitted as-is.
+          DO NOT include PII or sensitive data such as:
+          - Passwords, tokens, API keys
+          - Credit card numbers, CVV codes
+          - National IDs, SSN, passport numbers
+          - Unencrypted personal data
+        required: false
+        pii_risk: high
+        example: {"source": "mobile_app", "version": "2.1.0"}
 
       customer_id:
         type: text
