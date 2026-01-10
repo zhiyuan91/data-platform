@@ -20,14 +20,12 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 **1. Schema Registries (Confluent, AWS Glue)**
 - ✅ Validates JSON/Avro schema syntax
 - ❌ Misses semantic issues (unit mismatches, business logic errors)
-- ❌ Can't detect field naming mistakes (both `amount` and `order_total` are valid)
 - ❌ No understanding of code logic
 
 **2. Integration Tests**
 - ✅ Can catch some breaking changes
 - ❌ Expensive to maintain
 - ❌ Slow feedback loop
-- ❌ Often skipped for "minor" changes
 - ❌ Requires running full producer + consumer stack
 
 **3. Manual Code Reviews**
@@ -37,19 +35,12 @@ Even with well-defined data contracts, producers can accidentally introduce brea
 - ❌ Reviewers may not have contract context
 - ❌ Slows down development
 
-**4. Contract Testing (Pact, Spring Cloud Contract)**
-- ✅ Tests producer-consumer interactions
-- ❌ Requires maintaining test code
-- ❌ Only validates what you explicitly test
-- ❌ Can drift from actual contracts
-
 ## Why AI-Powered Validation?
 
 Claude AI excels at understanding semantic meaning and business logic, making it perfect for contract validation:
 
 - ✅ **Semantic Understanding**: Detects that `getEpochSecond()` produces seconds, not the required milliseconds
 - ✅ **Business Logic Analysis**: Understands that `quantity = 0` violates a "must be positive" rule
-- ✅ **Context Awareness**: Knows `orderTotal` (camelCase) maps to `order_total` (snake_case), but `amount` doesn't
 - ✅ **Code Reasoning**: Traces through switch statements and builders to find the actual output
 - ✅ **Instant Feedback**: Runs in seconds on every PR, no test infrastructure needed
 - ✅ **Zero Maintenance**: No test code to write or maintain
@@ -58,7 +49,7 @@ This POC demonstrates how to use Claude Code Action to automatically validate pr
 
 ## How It Works
 
-**For producer teams, setup is simple: install the GitHub App (provided by the platform team).** Validation runs automatically on every pull request.
+**Producer teams just install a GitHub App (provided by the platform team) and validation runs automatically on every pull request.**
 
 ```mermaid
 sequenceDiagram
