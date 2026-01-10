@@ -26,7 +26,7 @@ jobs:
       - name: Validate contracts with Claude
         uses: anthropics/claude-code-action@v1
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GH_APP_TOKEN }}
         with:
