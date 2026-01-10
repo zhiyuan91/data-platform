@@ -137,11 +137,23 @@ jobs:
             1. Read `contract-mappings.yaml` for `${{ github.event.client_payload.repo }}`
             2. Read contract YAMLs from `contracts/` directory
             3. Analyze code in `producer-repo/` (PR #${{ github.event.client_payload.pr_number }})
-            4. Check for:
+            4. For each required field in the contract, verify the producer code will emit the EXACT field name in JSON:
+               - Java: Field name `orderTotal` → JSON field `"orderTotal"` (camelCase)
+               - Java: Field name `amount` → JSON field `"amount"` (NOT `"order_total"`)
+               - Contract field names use snake_case: `order_total`, `order_id`, etc.
+               - If Java field doesn't match contract field (accounting for camelCase ↔ snake_case), it's BREAKING
+            5. Check for:
                - **P0 (BREAKING)**: Enum drift, field removal/rename, type changes, unit mismatches, business rule violations
                - **P1 (WARNING)**: Default/null changes that don't break existing consumers
                - **P2 (WARNING)**: PII leakage
-            5. Output ONLY the formatted result (no preamble, no "I will...", no process explanations)
+            6. Output ONLY the formatted result (no preamble, no "I will...", no process explanations)
+
+            **Field Name Validation (CRITICAL):**
+            - Contract uses snake_case: `order_total`, `order_status`, `customer_id`
+            - Java typically uses camelCase: `orderTotal`, `orderStatus`, `customerId`
+            - Verify Java field names match contract (with case conversion)
+            - Example BREAKING: Java field `amount` does NOT match contract field `order_total`
+            - Example OK: Java field `orderTotal` matches contract field `order_total` (camelCase ↔ snake_case)
 
             **Status Rules (CRITICAL):**
             - Use 🚨 BREAKING if ANY P0 issues found (enum drift, field removal/rename, type changes, unit mismatches, business rule violations)
