@@ -104,59 +104,54 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           github_token: ${{ steps.generate-token.outputs.token }}
           prompt: |
-            You are a data contract validation expert. Analyze the producer code against data contracts and report violations CONCISELY.
+            You are a data contract validation expert. Analyze the producer code against data contracts.
 
-            **IMPORTANT - Output Format:**
-            Keep your response SHORT and ACTIONABLE. Use this EXACT format:
+            **CRITICAL: Output ONLY the formatted results. NO explanations, NO "I will analyze", NO process descriptions.**
+
+            **Required Output Format:**
 
             ## 🔍 Contract Validation Results
 
             **Status**: [✅ PASS | ⚠️ WARNING | 🚨 BREAKING]
 
-            [If PASS: One line saying "No breaking changes detected."]
-            [If issues found: List top 3 most critical issues ONLY]
+            [If PASS: "No breaking changes detected."]
+            [If issues: List top 3 critical issues]
 
             ### Critical Issues
 
-            #### 🔴 Issue 1: [Short Title]
-            - **Field**: `field_name`
-            - **Problem**: [One sentence]
-            - **Location**: File.java:LINE
-            - **Fix**: [One sentence action]
+            #### 🔴 Enum Drift
+            - **Field**: `order_status`
+            - **Problem**: Using "REFUNDED" which is not in contract's allowed enum values
+            - **Location**: OrderProducer.java:11, :38
+            - **Fix**: Remove REFUNDED from enum or update contract first
 
-            #### 🟠 Issue 2: [Short Title]
-            - **Field**: `field_name`
-            - **Problem**: [One sentence]
-            - **Location**: File.java:LINE
-            - **Fix**: [One sentence action]
-
-            [Max 3 issues - prioritize P0 breaking changes]
+            #### 🟠 Hardcoded Status
+            - **Field**: `order_status`
+            - **Problem**: All orders hardcoded to REFUNDED instead of using actual order status
+            - **Location**: OrderProducer.java:38
+            - **Fix**: Change to `.orderStatus(order.getStatus().name())`
 
             ---
-            **Contracts checked**: orders-latest, line-items | [Full details in workflow](workflow-url)
+            **Contracts checked**: orders-latest, line-items
 
-            **Analysis Guidelines:**
-            1. Read `contract-mappings.yaml` to find contracts for `${{ github.event.client_payload.repo }}`
-            2. Read contract YAML files from `contracts/` directory
-            3. Analyze code in `producer-repo/` directory (PR #${{ github.event.client_payload.pr_number }} branch)
-            4. Focus on these DATA QUALITY issues:
-               - **Category 1 (P0)**: Enum drift - new values not in contract
-               - **Category 2 (P1)**: Unit mismatches - seconds vs milliseconds, cents vs dollars
-               - **Category 3 (P1)**: Default/null changes - sending 0 instead of null
-               - **Category 4 (P1)**: Business rules - quantity > 0, amount limits
-               - **Category 5 (P2)**: PII leakage - sensitive data in wrong fields
-               - **Category 6 (P3)**: Missing required fields
-               - **Category 7 (P0)**: Field removal/rename
-               - **Category 8 (P3)**: Type conversions
+            **Analysis Instructions:**
+            1. Read `contract-mappings.yaml` for `${{ github.event.client_payload.repo }}`
+            2. Read contract YAMLs from `contracts/` directory
+            3. Analyze code in `producer-repo/` (PR #${{ github.event.client_payload.pr_number }})
+            4. Check for:
+               - **P0**: Enum drift, field removal/rename
+               - **P1**: Unit mismatches, business rule violations, default/null changes
+               - **P2**: PII leakage
+            5. Output ONLY the formatted result (no preamble, no "I will...", no process explanations)
 
-            **Output Requirements:**
-            - Keep response under 30 lines
-            - Show ONLY breaking changes (P0/P1)
-            - Skip detailed explanations
-            - Skip "passed validations" section
-            - Be specific with file:line references
+            **Output Rules:**
+            - Start immediately with "## 🔍 Contract Validation Results"
+            - Max 3 issues
+            - Each issue: 4 bullets (Field, Problem, Location, Fix)
+            - Keep total under 25 lines
+            - NO conversational text
 
-            Begin analysis now.
+            Begin analysis.
 
       - name: Debug - List files after Claude validation
         if: always()
