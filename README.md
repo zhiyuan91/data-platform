@@ -110,18 +110,32 @@ graph TB
 
 **Flow:**
 
-1. **Developer creates PR** in producer repo (e.g., checkout-service)
-2. **GitHub App triggers webhook** on PR open/update
-3. **Webhook handler receives event** and calls GitHub API `repository_dispatch` to trigger contract validation workflow
-4. **Validation workflow starts**:
-   - Checks out contracts from platform repo
-   - Checks out producer code from PR branch
-   - Runs Claude Code Action with validation prompt
-5. **Claude analyzes the code**:
-   - Reads contract YAML
-   - Analyzes Java/Kotlin producer code
-   - Detects breaking changes, warnings, or passes
-6. **Results posted as PR comment** with actionable feedback
+```mermaid
+sequenceDiagram
+    actor Dev as 👨‍💻 Developer
+    participant PR as 📝 Pull Request
+    participant GHA as 📱 GitHub App
+    participant WH as 🔗 Webhook Handler
+    participant API as 📡 Repository Dispatch
+    participant WF as ⚙️ Validation Workflow
+    participant Claude as 🧠 Claude Code Action
+
+    Dev->>PR: Creates PR in producer repo
+    PR->>GHA: Triggers webhook event
+    GHA->>WH: Sends pull_request payload
+    WH->>API: Calls repository_dispatch API
+    API->>WF: Triggers validation workflow
+
+    Note over WF: Checks out contracts & PR code
+
+    WF->>Claude: Invokes with validation prompt
+
+    Note over Claude: Reads contract YAML<br/>Analyzes producer code<br/>Detects issues
+
+    Claude-->>WF: Returns validation results
+    WF->>PR: Posts comment with results
+    PR-->>Dev: Shows validation feedback
+```
 
 **No test code to write. No CI/CD changes. Just install the app and get instant validation on every PR.**
 
