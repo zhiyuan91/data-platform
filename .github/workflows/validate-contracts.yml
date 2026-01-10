@@ -228,6 +228,26 @@ jobs:
 
             Begin your analysis now by reading the producer code in `producer-repo/`.
 
+      - name: Debug - List files after Claude validation
+        if: always()
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo ""
+          echo "=== Files in current directory ==="
+          ls -la
+          echo ""
+          echo "=== Looking for validation-results.md ==="
+          find . -name "validation-results.md" -type f 2>/dev/null || echo "Not found"
+          echo ""
+          echo "=== Execution file from Claude Code Action ==="
+          echo "Execution file: ${{ steps.validate.outputs.execution_file }}"
+          if [ -f "${{ steps.validate.outputs.execution_file }}" ]; then
+            echo "File exists, size: $(wc -c < "${{ steps.validate.outputs.execution_file }}") bytes"
+          else
+            echo "Execution file not found"
+          fi
+
       - name: Update PR comment with results
         if: always()
         uses: actions/github-script@v7
@@ -260,48 +280,59 @@ jobs:
               }
             }
 
-            // Get validation results from Claude's execution file
+            // Try multiple methods to get validation results
             let validationResults;
-            const executionFile = '${{ steps.validate.outputs.execution_file }}';
 
-            try {
+            // Method 1: Read validation-results.md (what we told Claude to write)
+            if (fs.existsSync('validation-results.md')) {
+              try {
+                validationResults = fs.readFileSync('validation-results.md', 'utf8');
+                console.log('Successfully read validation-results.md');
+              } catch (error) {
+                console.log('Error reading validation-results.md:', error.message);
+              }
+            }
+
+            // Method 2: Read from execution file if validation-results.md doesn't exist
+            if (!validationResults) {
+              const executionFile = '${{ steps.validate.outputs.execution_file }}';
               if (executionFile && fs.existsSync(executionFile)) {
-                // Read the execution file (JSON format from Claude Code)
-                const executionData = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
+                try {
+                  const executionData = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
+                  let claudeOutput = '';
 
-                // Extract text content from Claude's messages
-                let claudeOutput = '';
-                if (executionData.turns && Array.isArray(executionData.turns)) {
-                  for (const turn of executionData.turns) {
-                    if (turn.message && turn.message.content) {
-                      for (const content of turn.message.content) {
-                        if (content.type === 'text' && content.text) {
-                          claudeOutput += content.text + '\n';
+                  if (executionData.turns && Array.isArray(executionData.turns)) {
+                    for (const turn of executionData.turns) {
+                      if (turn.message && turn.message.content) {
+                        for (const content of turn.message.content) {
+                          if (content.type === 'text' && content.text) {
+                            claudeOutput += content.text + '\n';
+                          }
                         }
                       }
                     }
                   }
-                }
 
-                if (claudeOutput.trim()) {
-                  validationResults = claudeOutput.trim();
-                } else {
-                  throw new Error('No text content found in execution file');
+                  if (claudeOutput.trim()) {
+                    validationResults = claudeOutput.trim();
+                    console.log('Successfully extracted from execution file');
+                  }
+                } catch (error) {
+                  console.log('Error reading execution file:', error.message);
                 }
-              } else {
-                throw new Error('Execution file not found');
               }
-            } catch (error) {
+            }
+
+            // Method 3: Fallback message with link
+            if (!validationResults || validationResults.trim() === '') {
               validationResults = [
-                '## ✅ Contract Validation Complete',
+                '## ⚠️ Could Not Extract Validation Results',
                 '',
-                'The validation process has completed successfully.',
+                'The validation completed, but results could not be extracted automatically.',
                 '',
-                '**Status:** ✓ Complete',
+                '**Please check the [workflow summary](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed validation results.**',
                 '',
-                'Please check the [workflow summary](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed validation results.',
-                '',
-                `_Note: Could not extract results from execution file: ${error.message}_`
+                'This is a known issue we are working to resolve.'
               ].join('\n');
             }
 
