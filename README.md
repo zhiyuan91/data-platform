@@ -8,7 +8,7 @@ In modern microservices architectures with event-driven systems (Kafka, SQS, Eve
 
 **How do you ensure upstream changes don't break downstream consumers?**
 
-Even with well-defined data contracts, producers can accidentally introduce breaking changes:
+Even with well-defined data contracts, producers can accidentally introduce breaking changes. Common issues include:
 - Adding enum values not in the contract
 - Changing field names or types
 - Using wrong units (seconds vs milliseconds, dollars vs cents)
