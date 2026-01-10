@@ -34,12 +34,10 @@ jobs:
       - name: Validate contracts with Claude
         uses: anthropics/claude-code-action@v1
         env:
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.GH_ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.GH_ANTHROPIC_AUTH_TOKEN }}
           ANTHROPIC_BASE_URL: ${{ secrets.GH_ANTHROPIC_BASE_URL }}
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
-          repo: ${{ github.event.client_payload.repo }}
-          pr_number: ${{ github.event.client_payload.pr_number }}
           prompt: |
             You are a data contract validation expert. Analyze this pull request for breaking changes against data contracts.
 
