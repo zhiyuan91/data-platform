@@ -87,20 +87,21 @@ sequenceDiagram
 - Provides cross-repo access via scoped tokens
 
 **2. Webhook Handler**
-- Receives `pull_request` events from producer repos
+- A service (AWS Lambda, Kubernetes, or any HTTP server) that receives `pull_request` events from producer repos
 - Calls GitHub API `repository_dispatch` to trigger contract validation workflow
 - Passes PR metadata (repo, number, branch ref)
 
 **3. Validation Workflow**
 - Triggered by `repository_dispatch` event
+- Uses `contract-mappings.yaml` to determine which contracts apply to the producer repo
 - Checks out both platform repo (contracts) and producer repo (PR branch)
 - Invokes Claude Code Action with validation prompt
 - Posts results as PR comment
 
 **4. Claude Code Action**
 - Reads contract YAML from platform repo
-- Analyzes code from producer PR
-- Performs semantic validation
+- Analyzes the full producer codebase (not just PR diff), enabling cross-file semantic analysis such as tracing constant usage and understanding complex code patterns
+- Performs semantic validation against contract requirements
 - Generates formatted report with breaking changes, warnings, or pass status
 
 ## Repository Structure
